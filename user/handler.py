@@ -77,6 +77,20 @@ class UserView(MethodView):
             u.save()
             return jsonify({"movies_rated": user_mov})
 
+        elif data.get("genre"):
+            genre = data.get("genre") or []
+
+            if not isinstance(genre, list):
+                genre = [genre]
+
+            genre.extend(u.genre)
+            u.genre = list(set(genre))
+            u.save()
+
+            top_movies = Movie.objects(
+                __raw__={"genre": {"$in": genre}}).order_by("-average", "-count").limit(20)
+            return jsonify({"user": top_movies})
+
 
     def post(self):
         data = self.json_decode(request.data)
