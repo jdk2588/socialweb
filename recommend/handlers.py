@@ -42,7 +42,6 @@ class RecommendView(MethodView):
         #data_structure[_obj.name]["genre"] = orig_user.genre
 
         ret = getRecommendations(data_structure, orig_user.name)
-        print ret
-        return jsonify({"movies_rated": data_structure})
+        return jsonify({"movies_rated": data_structure, "recommended_movies": ret})
 
 recommend.add_url_rule("/recommend", view_func=RecommendView.as_view('recommend'))

@@ -47,7 +47,6 @@ def sim_pearson(prefs, p1, p2):
     # Calculate r (Pearson score)
     num = float(pSum - sum1 * sum2 / n)
     den = float(sqrt((sum1Sq - pow(sum1, 2) / n) * (sum2Sq - pow(sum2, 2) / n)))
-    import ipdb; ipdb.set_trace()
     if den == 0:
         return 0
     r = num / den
