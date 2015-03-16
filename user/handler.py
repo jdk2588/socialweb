@@ -17,7 +17,16 @@ class UserView(MethodView):
 
     def get(self):
         data = request.args
-        orig_user = User.objects.get(facebook_id=data.get("user_id"))
+        user_id=data.get("user_id")
+        if not user_id:
+            return jsonify({"result": "Send user_id of signed in user", "error": 412})
+
+        if data.get("all"):
+           all_users = User.objects(facebook_id__ne=user_id)
+           return jsonify({"all_users": all_users})
+
+        orig_user = User.objects.get(facebook_id=user_id)
+
         return jsonify({"user": orig_user})
 
     def put(self):
