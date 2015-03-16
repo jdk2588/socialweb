@@ -16,7 +16,9 @@ class UserView(MethodView):
           return json.loads(data, *args, **kwargs)
 
     def get(self):
-        return render_template('about.html')
+        data = request.args
+        orig_user = User.objects.get(facebook_id=data.get("user_id"))
+        return jsonify({"user": orig_user})
 
     def put(self):
         data = self.json_decode(request.data)
