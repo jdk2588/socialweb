@@ -1,5 +1,5 @@
 import json
-from flask import request, Blueprint
+from flask import request, make_response, Blueprint
 from flask import render_template
 from flask import jsonify
 from flask.views import MethodView
@@ -22,13 +22,17 @@ class UserView(MethodView):
         data = self.json_decode(request.data)
         u = User.objects.get(facebook_id=data.get("user_id"))
         if data.get("follow"):
-            user_id = data.get("follow").get("user_id")
+            to_f_id = data.get("follow").get("user_id")
             if not user_id:
                 #raise Exception("No user_id to follow")
                 return jsonify({"result": "No user_id to follow", "error": 412})
 
+            if user_id == u.pk:
+                return jsonify({"result": "Can not follow same user", "error": 412})
+
             user_fr = u.friends
-            user_fr.append(user_id)
+            user_to_follow = User.objects.get(facebook_id=to_f_id)
+            user_fr.append(user_to_follow.pk)
             u.friends=list(set(user_fr))
             u.save()
             return jsonify({"user_followed": user_id})
@@ -47,12 +51,21 @@ class UserView(MethodView):
                 if str(_each.movie_id.pk) == m_id:
                     _each.ratings = rating
                     user_mov[i] = _each
+                    tot_num = _each.movie_id.count * _each.movie_id.average
+                    _each.movie_id.count = _each.movie_id.count + 1
+                    _each.movie_id.average = round((tot_num + rating)/_each.movie_id.count, 2)
+                    _each.movie_id.save()
                     found=True
                     break
 
             if not found:
                 m = Movie.objects.get(pk=m_id)
                 _mr = MovieRating(movie_id=m, ratings=rating)
+                tot_num = m.count * m.average
+                m.count = m.count + 1
+                m.average = round((tot_num + rating)/m.count, 2)
+                m.save()
+                m.count = m.count+1
                 user_mov.append(_mr)
                 user_genre.extend(m.genre)
                 u.genre = list(set(user_genre))
@@ -129,6 +142,8 @@ class UserView(MethodView):
         u.genre = list(set(u_genre))
         u.gender = _fb.get("gender")
         u.save()
-        return jsonify({"result": u})
+        response = make_response(jsonify({"result": u}))
+        response.set_cookie('cookie_name',value=fb_id)
+        return response
 
 user.add_url_rule("/user", view_func=UserView.as_view('user'))
