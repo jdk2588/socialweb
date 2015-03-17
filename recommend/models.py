@@ -36,6 +36,8 @@ def sim_pearson(prefs, p1, p2):
 
     # Sum calculations
     n = len(si)
+    if not n:
+        return 0
     # Sums of all the preferences
     sum1 = sum([prefs[p1][it] for it in si])
     sum2 = sum([prefs[p2][it] for it in si])
@@ -90,7 +92,6 @@ def getRecommendations(prefs, person, similarity=sim_distance):
         for item in prefs[other]:
             # Only score movies I haven't seen yet
             if item not in prefs[person] or prefs[person][item] == 0:
-                import pprint; pprint.pprint("%s has seen the movie %s, and closest to user %s" % (other, item, person))
                 # Similarity * Score
                 totals.setdefault(item, 0)
                 # The final score is calculated by multiplying each item by the
@@ -101,7 +102,7 @@ def getRecommendations(prefs, person, similarity=sim_distance):
                 simSums[item] += sim
                 # Create the normalized list
 
-    rankings = [(total / simSums[item], item) for (item, total) in
+    rankings = [(sim, total / simSums[item], item) for (item, total) in
                     totals.items()]
         # Return the sorted list
     rankings.sort()

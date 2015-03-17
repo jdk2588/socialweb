@@ -129,6 +129,7 @@ class UserView(MethodView):
             if not created_new:
                 _mr = MovieRating(movie_id=m.pk)
                 for um in user_movies:
+                    _mr.movie_title = m.title
                     if um.movie_id == m.pk:
                         mov.append(_mr)
                         break
@@ -163,6 +164,7 @@ class UserView(MethodView):
             m.save()
             _mr = MovieRating()
             _mr.movie_id = m.pk
+            _mr.movie_title = m.title
             mov.append(_mr)
             u_genre.extend(_ret["genre"])
 

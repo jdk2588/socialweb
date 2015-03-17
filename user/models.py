@@ -15,6 +15,7 @@ ReferenceField = con.ReferenceField
 class MovieRating(EmbeddedDocument):
     movie_id = ReferenceField(Movie)
     ratings = FloatField()
+    movie_title = StringField()
 
 class User(con.Document):
     name = StringField()
