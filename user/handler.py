@@ -6,6 +6,7 @@ from flask.views import MethodView
 from facebook import Facebook
 from models import User, MovieRating
 from movies.models import Movie, get_genre
+from recommend.models import getRecommendations, transformPrefs
 
 
 user = Blueprint("user", __name__)
@@ -22,12 +23,34 @@ class UserView(MethodView):
             return jsonify({"result": "Send user_id of signed in user", "error": 412})
 
         if data.get("all"):
-           all_users = User.objects(facebook_id__ne=user_id)
-           return jsonify({"all_users": all_users})
+           all_users = User.objects()
+
+           data_structure = {}
+
+           for _u in all_users:
+               if _u.facebook_id == int(user_id):
+                   orig_user = _u
+
+               movies = _u.movies
+               data_structure[str(_u.pk)] = {}
+               for _m in movies:
+                    _each_m = _m.movie_id
+                    data_structure[str(_u.pk)][_each_m.title] = _m.ratings or 0
+
+           ret = getRecommendations(data_structure, str(orig_user.pk), only_sim=True)
+
+           new = []
+           for _u in all_users:
+               if _u.facebook_id == int(user_id):
+                   continue
+               _u.sim_score = ret[str(_u.pk)]
+               new.append(_u)
+
+           return jsonify({"all_users": new})
 
         orig_user = User.objects.get(facebook_id=user_id)
         _obj = self.json_decode(orig_user.to_json())
-        for i, _m in enumerate(_obj):
+        for i, _m in enumerate(_obj.get("movies")):
             _obj["movies"][i]["title"] = orig_user.movies[i].movie_id.title
             _obj["movies"][i]["_id"] = str(orig_user.movies[i].movie_id.pk)
 
@@ -62,7 +85,7 @@ class UserView(MethodView):
             user_genre = u.genre
             found=False
             rating = float(data.get("rate").get("rating") or 0)
-            for i, _m in enumerate(_obj.get("movies")):
+            for i, _each in enumerate(user_mov):
                 if str(_each.movie_id.pk) == m_id:
                     _each.ratings = rating
                     user_mov[i] = _each

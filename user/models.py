@@ -5,6 +5,7 @@ con = BaseApp.access_db()
 
 StringField = con.StringField
 IntField = con.IntField
+FloatField = con.FloatField
 DateTimeField = con.DateTimeField
 ListField = con.ListField
 EmbeddedDocumentField = con.EmbeddedDocumentField
@@ -27,6 +28,7 @@ class User(con.Document):
     friends = ListField()
     movies = ListField(EmbeddedDocumentField(MovieRating))
     genre = ListField()
+    sim_score = FloatField()
 
     meta = {
         'collection': 'users',

@@ -73,7 +73,7 @@ def topMatches(
     return scores[0:n]
 
 
-def getRecommendations(prefs, person, similarity=sim_distance):
+def getRecommendations(prefs, person, similarity=sim_distance, only_sim=False):
     '''
     Gets recommendations for a person by using a weighted average
     of every other user's rankings
@@ -81,14 +81,21 @@ def getRecommendations(prefs, person, similarity=sim_distance):
 
     totals = {}
     simSums = {}
+    similar = {}
     for other in prefs:
         # Don't compare me to myself
         if other == person:
             continue
         sim = similarity(prefs, person, other)
+
+        if only_sim:
+            similar[other] = sim or 0.0
+            continue
         # Ignore scores of zero or lower
         if sim <= 0:
             continue
+
+
         for item in prefs[other]:
             # Only score movies I haven't seen yet
             if item not in prefs[person] or prefs[person][item] == 0:
@@ -101,6 +108,9 @@ def getRecommendations(prefs, person, similarity=sim_distance):
                 simSums.setdefault(item, 0)
                 simSums[item] += sim
                 # Create the normalized list
+
+    if only_sim:
+        return similar
 
     rankings = [(sim, total / simSums[item], item) for (item, total) in
                     totals.items()]
