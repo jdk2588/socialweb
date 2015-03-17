@@ -2,6 +2,7 @@ import settings
 from flask import Flask
 from flask.ext.mongoengine import MongoEngine
 from werkzeug.routing import BaseConverter
+from flask.ext.cors import CORS, cross_origin
 
 class RegexConverter(BaseConverter):
     def __init__(self, url_map, *items):
@@ -23,6 +24,10 @@ class BaseApp(object):
 
     def __init__(self, *args, **kwargs):
         self.app = Flask(__name__)
+        self.app.config['SECRET_KEY'] = 'the quick brown fox jumps over the lazy   dog'
+	self.app.config['CORS_HEADERS'] = 'Content-Type'
+
+	cors = CORS(self.app, resources={r"/": {"origins": "http://dessad.altervista.org"}})
         self.app.config.from_object('settings')
         print "Call...."
         con.init_app(self.app)

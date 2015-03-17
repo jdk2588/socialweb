@@ -62,7 +62,7 @@ class UserView(MethodView):
             user_genre = u.genre
             found=False
             rating = float(data.get("rate").get("rating") or 0)
-            for i, _each in enumerate(user_mov):
+            for i, _m in enumerate(_obj.get("movies")):
                 if str(_each.movie_id.pk) == m_id:
                     _each.ratings = rating
                     user_mov[i] = _each
@@ -121,7 +121,7 @@ class UserView(MethodView):
         u, created_new = User.objects.get_or_create(facebook_id=fb_id)
         u.name = _fb.get("name")
         user_movies = u.movies
-        movies = _fb.get("movies").get("data")
+        movies = (_fb.get("movies") or {}).get("data") or []
         mov = []
         u_genre = u.genre
         for x in movies:
