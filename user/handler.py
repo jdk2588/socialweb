@@ -26,8 +26,12 @@ class UserView(MethodView):
            return jsonify({"all_users": all_users})
 
         orig_user = User.objects.get(facebook_id=user_id)
+        _obj = self.json_decode(orig_user.to_json())
+        for i, _m in enumerate(_obj):
+            _obj["movies"][i]["title"] = orig_user.movies[i].movie_id.title
+            _obj["movies"][i]["_id"] = str(orig_user.movies[i].movie_id.pk)
 
-        return jsonify({"user": orig_user})
+        return jsonify({"user": _obj})
 
     def put(self):
         data = self.json_decode(request.data)
