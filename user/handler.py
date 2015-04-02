@@ -6,7 +6,7 @@ from flask.views import MethodView
 from facebook import Facebook
 from models import User, MovieRating
 from movies.models import Movie, get_genre
-from recommend.models import getRecommendations, transformPrefs
+from recommend.models import getRecommendations, transformPrefs, sim_pearson
 
 
 user = Blueprint("user", __name__)
@@ -37,7 +37,7 @@ class UserView(MethodView):
                     _each_m = _m.movie_id
                     data_structure[str(_u.pk)][_each_m.title] = _m.ratings or 0
 
-           ret = getRecommendations(data_structure, str(orig_user.pk), only_sim=True)
+           ret = getRecommendations(data_structure, str(orig_user.pk), only_sim=True, similarity=sim_pearson)
 
            new = []
            for _u in all_users:
@@ -58,7 +58,7 @@ class UserView(MethodView):
 
     def put(self):
         data = self.json_decode(request.data)
-        u = User.objects.get(facebook_id=data.get("user_id"))
+        u = User.objects.get(facebook_id=int(data.get("user_id")))
         if data.get("follow"):
             to_f_id = data.get("follow").get("user_id")
             if not user_id:
@@ -76,37 +76,63 @@ class UserView(MethodView):
             return jsonify({"user_followed": user_id})
 
         elif data.get("rate"):
-            m_id = data.get("rate").get("movie_id")
-            if not m_id:
+            movies_to_rate = data.get("rate")
+            if not movies_to_rate:
                 #raise Exception("No movie_id to rate")
                 return jsonify({"result": "No movie_id to rate", "error": 412})
+
+            if not isinstance(movies_to_rate, list):
+                movies_to_rate = [movies_to_rate]
 
             user_mov = u.movies
             user_genre = u.genre
             found=False
-            rating = float(data.get("rate").get("rating") or 0)
-            for i, _each in enumerate(user_mov):
-                if str(_each.movie_id.pk) == m_id:
-                    _each.ratings = rating
-                    user_mov[i] = _each
-                    tot_num = _each.movie_id.count * _each.movie_id.average
-                    _each.movie_id.count = _each.movie_id.count + 1
-                    _each.movie_id.average = round((tot_num + rating)/_each.movie_id.count, 2)
-                    _each.movie_id.save()
-                    found=True
-                    break
+            new_added = []
+            already_present = []
+            faltu_list = []
+            purani_list = []
+            for _each_movie in movies_to_rate: 
+		m_id = _each_movie.get("movie_id")
+		rating = float(_each_movie.get("rating") or 0)
+            	for i, _each in enumerate(user_mov):
 
-            if not found:
-                m = Movie.objects.get(pk=m_id)
-                _mr = MovieRating(movie_id=m, ratings=rating)
-                tot_num = m.count * m.average
-                m.count = m.count + 1
-                m.average = round((tot_num + rating)/m.count, 2)
-                m.save()
-                m.count = m.count+1
-                user_mov.append(_mr)
-                user_genre.extend(m.genre)
-                u.genre = list(set(user_genre))
+			if str(_each.movie_id.pk) == m_id:
+                            already_present.append({"movie_id": m_id, "ratings": rating})
+                            purani_list.append(m_id)
+                if m_id not in purani_list and m_id not in faltu_list:
+                            faltu_list.append(m_id)
+                            new_added.append({"movie_id": m_id, "ratings": rating})
+
+
+            for i in new_added:
+		m = Movie.objects.get(pk=i.get("movie_id"))
+		_mr = MovieRating(movie_id=m, ratings=i.get("ratings"))
+                _mr.movie_title = _mr.movie_id.title
+		tot_num = _mr.movie_id.count * _mr.movie_id.average
+		_mr.movie_id.count = _mr.movie_id.count + 1
+		_mr.movie_id.average = round((tot_num + i.get("ratings"))/_mr.movie_id.count, 2)
+		_mr.movie_id.save()
+		user_mov.append(_mr)
+		user_genre.extend(m.genre)
+
+            for i in already_present:
+               for j, _each in enumerate(u.movies):
+                        if str(_each.movie_id.pk) != i.get("movie_id"):
+			   continue 
+			m = Movie.objects.get(pk=i.get("movie_id"))
+			_mr = _each#MovieRating(movie_id=m, ratings=i.get("ratings"))
+                        _mr.ratings = i.get("ratings")
+                        _mr.movie_title = _mr.movie_id.title
+			tot_num = _mr.movie_id.count * _mr.movie_id.average
+			_mr.movie_id.count = _mr.movie_id.count + 1
+			_mr.movie_id.average = round((tot_num + i.get("ratings"))/_each.movie_id.count, 2)
+			_mr.movie_id.save()
+                        user_mov[j] = _mr
+                        break;
+	       user_genre.extend(m.genre)
+
+
+	    u.genre = list(set(user_genre))
 
             u.movies = user_mov
 
@@ -124,8 +150,8 @@ class UserView(MethodView):
             u.save()
 
             top_movies = Movie.objects(
-                __raw__={"genre": {"$in": genre}}).order_by("-average", "-count").limit(20)
-            return jsonify({"user": top_movies})
+                __raw__={"genre": {"$in": genre}}).order_by("-count", "-average").limit(20)
+            return jsonify({"top_movies": top_movies})
 
 
     def post(self):
